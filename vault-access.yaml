@@ -1,0 +1,18 @@
+---
+users:
+  - name: sebbe
+    groups:
+      - admins
+    policies:
+      - admin
+      - kv-admin
+      - pki-admin
+      - ssh-admin
+      - db-admin
+#  - name: someother
+#    policies:
+#      - ssh-admin
+#
+groups:
+  - name: admins
+  - name: readers
