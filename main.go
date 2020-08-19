@@ -16,25 +16,20 @@ var method = "userpass"
 type User struct {
 	Name     string   `yaml:"name"`
 	Policies []string `yaml:"policies"`
-	//Groups   []Group  `yaml:"groups"`
 }
-
-//type Group struct {
-//	Name string `yaml:"name"`
-//}
 
 type VaultContainer struct {
 	UserContainer []User `yaml:"users"`
-	//GroupContainer []Group `yaml:"users"`
+	//yml           []byte
 }
 
-func (u *VaultContainer) addUser(user User) []User {
-	u.UserContainer = append(u.UserContainer, user)
-	return u.UserContainer
+func (vc *VaultContainer) addUser(user User) []User {
+	vc.UserContainer = append(vc.UserContainer, user)
+	return vc.UserContainer
 }
 
-func (u *VaultContainer) getUser(search string) (user User, err error) {
-	for _, user := range u.UserContainer {
+func (vc *VaultContainer) getUser(search string) (user User, err error) {
+	for _, user := range vc.UserContainer {
 		if user.Name == search {
 			return user, nil
 		}
@@ -43,14 +38,9 @@ func (u *VaultContainer) getUser(search string) (user User, err error) {
 	return emptyUser, fmt.Errorf("Could not find user %v\n", search)
 }
 
-func (u *VaultContainer) getYamlUser() error {
+func (vc *VaultContainer) importYaml(yml []byte) error {
 
-	data, err := ioutil.ReadFile("./vault-access.yaml")
-	if err != nil {
-		return fmt.Errorf("Could not read file: %v\n", err)
-	}
-
-	err = yaml.Unmarshal(data, u)
+	err := yaml.Unmarshal(yml, vc)
 
 	if err != nil {
 		return fmt.Errorf("Unmarshal error %v\n", err)
@@ -59,7 +49,7 @@ func (u *VaultContainer) getYamlUser() error {
 	return nil
 }
 
-func (u *VaultContainer) getVaultUser(c *api.Client) error {
+func (vc *VaultContainer) importVault(c *api.Client) error {
 	cL := c.Logical()
 	userList, err := listUsers(c, method)
 	if err != nil {
@@ -81,10 +71,12 @@ func (u *VaultContainer) getVaultUser(c *api.Client) error {
 		}
 
 		user := User{Name: uName, Policies: policies}
-		u.addUser(user)
+		vc.addUser(user)
 	}
 	return nil
 }
+
+func (vc *VaultContainer) syncVaultContainer(c *api.Client) {}
 
 func removeRootPolicy(s []string) []string {
 	for i, p := range s {
@@ -135,12 +127,7 @@ func exportPolicies(policies []string, c *api.Client) error {
 }
 
 func exportVaultAccess(users []string, c *api.Client) {
-
 }
-
-//func listGroups(c *api.Client, method string) (g []Group, err error) {
-//	cL := c.Logical()
-//}
 
 func listUsers(c *api.Client, method string) (u []string, err error) {
 	cL := c.Logical()
@@ -165,30 +152,6 @@ func listUsers(c *api.Client, method string) (u []string, err error) {
 	}
 
 	return u, nil
-}
-
-func syncUserContainer(c *api.Client) {
-
-	var u UserContainer
-	err := u.getYamlUserContainer()
-
-	if err != nil {
-		fmt.Println(err)
-		panic("Clould not get users from yaml file")
-	}
-
-	dU, err := u.getUser("test")
-
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	err = deleteUser(c, dU)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
 }
 
 func deleteUser(c *api.Client, u User) error {
@@ -236,15 +199,22 @@ func main() {
 		return
 	}
 
-	var uy UserContainer
-	var uv UserContainer
+	var uy VaultContainer
+	var uv VaultContainer
 
-	err = uy.getYamlUserContainer()
+	f, err := ioutil.ReadFile("./vault-access.yaml")
+
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	err = uv.getVaultUserContainer(client)
+
+	err = uy.importYaml(f)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	err = uv.importVault(client)
 	if err != nil {
 		fmt.Println(err)
 		return
