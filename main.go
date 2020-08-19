@@ -14,8 +14,9 @@ var vaultToken = "s.fwsOWfVMrh86GBhRJhOU1HtJ"
 var method = "userpass"
 
 type User struct {
-	Name     string   `yaml:"name"`
-	Policies []string `yaml:"policies"`
+	Name           string   `yaml:"name"`
+	Policies       []string `yaml:"policies"`
+	token_policies []string `json:data`
 }
 
 type VaultContainer struct {
@@ -49,18 +50,23 @@ func (vc *VaultContainer) importYaml(yml []byte) error {
 	return nil
 }
 
+// get []string of users and import one by one
 func (vc *VaultContainer) importVault(c *api.Client) error {
 	cL := c.Logical()
+
 	userList, err := listUsers(c, method)
+
 	if err != nil {
 		return fmt.Errorf("Could not retrieve all users %v\n", err)
 	}
+
 	for _, uName := range userList {
 		path := "/auth/" + method + "/users/" + uName
 
 		vaultUser, err := cL.Read(path)
+
 		if err != nil {
-			return fmt.Errorf("Could not retrieve all users %v\n", err)
+			return fmt.Errorf("Could not read user: %v\n ERROR: %v\n", uName, err)
 		}
 
 		tempPolicies := vaultUser.Data["token_policies"].([]interface{})
@@ -87,6 +93,31 @@ func removeRootPolicy(s []string) []string {
 	return s
 }
 
+func listUsers(c *api.Client, method string) (u []string, err error) {
+	cL := c.Logical()
+
+	users, err := cL.List("/auth/" + method + "/users")
+	if err != nil {
+		return u, fmt.Errorf("Could not get user list: %v\n", err)
+	}
+
+	t := users.Data["keys"].([]interface{})
+
+	// Is this the solution
+	//y, err := json.Marshal(users.Data["keys"])
+	//if err != nil {
+	//      return u, fmt.Errorf("Marshal error: %v\n", err)
+	//}
+
+	u = make([]string, len(t))
+
+	for i, v := range t {
+		u[i] = fmt.Sprint(v)
+	}
+
+	return u, nil
+}
+
 func getAllPolicies(c *api.Client) (p []string, err error) {
 	p, err = c.Sys().ListPolicies()
 	if err != nil {
@@ -100,6 +131,7 @@ func exportPolicies(policies []string, c *api.Client) error {
 	for _, p := range policies {
 		fName := "policies/" + p + ".hcl"
 		f, err := os.Create(fName)
+		defer f.Close()
 
 		if err != nil {
 			return fmt.Errorf("Could not write: %v, becouse: %v\n", fName, err)
@@ -115,43 +147,11 @@ func exportPolicies(policies []string, c *api.Client) error {
 		if err != nil {
 			return fmt.Errorf("Could not write policy: %v, becouse: %v\n", p, err)
 		}
-
-		err = f.Close()
-
-		if err != nil {
-			return fmt.Errorf("Could not close file policy: %v, becouse: %v\n", p, err)
-		}
-
 	}
 	return nil
 }
 
 func exportVaultAccess(users []string, c *api.Client) {
-}
-
-func listUsers(c *api.Client, method string) (u []string, err error) {
-	cL := c.Logical()
-
-	users, err := cL.List("/auth/" + method + "/users")
-	if err != nil {
-		return u, fmt.Errorf("Could not get user list: %v\n", err)
-	}
-
-	t := users.Data["keys"].([]interface{})
-
-	// Is this the solution
-	//y, err := json.Marshal(users.Data["keys"])
-	//if err != nil {
-	//	return u, fmt.Errorf("Marshal error: %v\n", err)
-	//}
-
-	u = make([]string, len(t))
-
-	for i, v := range t {
-		u[i] = fmt.Sprint(v)
-	}
-
-	return u, nil
 }
 
 func deleteUser(c *api.Client, u User) error {
@@ -229,5 +229,4 @@ func main() {
 	//		fmt.Println(err)
 	//		return
 	//	}
-
 }
