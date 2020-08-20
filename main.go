@@ -231,6 +231,27 @@ func syncPolicies(c *api.Client) error {
 	return nil
 }
 
+func syncUsers(c *api.Client, yamlVault *VaultContainer, vaultVault *VaultContainer) error {
+	for _, user := range yamlVault.UserContainer {
+		userExist := vaultVault.userExist(user)
+		if !userExist {
+			if err := addUser(c, user); err != nil {
+				return fmt.Errorf("Could not add user in sync process! %s", err)
+			}
+		}
+	}
+
+	for _, user := range vaultVault.UserContainer {
+		userExist := yamlVault.userExist(user)
+		if !userExist {
+			if err := deleteUser(c, user); err != nil {
+				return fmt.Errorf("Could not remove user in sync process! %s", err)
+			}
+		}
+	}
+	return nil
+}
+
 func exportVaultAccess(users []string, c *api.Client) {
 }
 
@@ -310,23 +331,4 @@ func main() {
 	//		return
 	//	}
 
-	for _, user := range uy.UserContainer {
-		userExist := uv.userExist(user)
-		if !userExist {
-			if err := addUser(client, user); err != nil {
-				fmt.Println(err)
-				return
-			}
-		}
-	}
-
-	for _, user := range uv.UserContainer {
-		userExist := uy.userExist(user)
-		if !userExist {
-			if err := deleteUser(client, user); err != nil {
-				fmt.Println(err)
-				return
-			}
-		}
-	}
 }
