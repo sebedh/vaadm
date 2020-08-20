@@ -1,18 +1,15 @@
 ---
 users:
   - name: sebbe
-    groups:
-      - admins
     policies:
-      - admin
-      - kv-admin
-      - pki-admin
-      - ssh-admin
-      - db-admin
+      - test-policy
+  - name: somerandom
+    policies:
+      - rumpa
+#
 #  - name: someother
 #    policies:
 #      - ssh-admin
 #
-groups:
-  - name: admins
-  - name: readers
+#
+#if occurence

@@ -1,27 +1,39 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/hashicorp/vault/api"
 	"gopkg.in/yaml.v2"
 )
 
-var vaultAddr = "https://vault.home.lan:8200"
-var vaultToken = "s.fwsOWfVMrh86GBhRJhOU1HtJ"
+var vaultAddr = "http://127.0.0.1:8200"
+var vaultToken = "s.r3EACEfjaamu0yZnWf1xPu4Y"
 var method = "userpass"
 
 type User struct {
-	Name           string   `yaml:"name"`
-	Policies       []string `yaml:"policies"`
-	token_policies []string `json:data`
+	Name     string   `yaml:"name"`
+	Policies []string `yaml:"policies"`
 }
 
 type VaultContainer struct {
 	UserContainer []User `yaml:"users"`
 	//yml           []byte
+}
+
+func (vc *VaultContainer) userExist(findUser User) bool {
+	for _, user := range vc.UserContainer {
+		if user.Name == findUser.Name {
+			return true
+		}
+	}
+	return false
 }
 
 func (vc *VaultContainer) addUser(user User) []User {
@@ -97,6 +109,7 @@ func listUsers(c *api.Client, method string) (u []string, err error) {
 	cL := c.Logical()
 
 	users, err := cL.List("/auth/" + method + "/users")
+
 	if err != nil {
 		return u, fmt.Errorf("Could not get user list: %v\n", err)
 	}
@@ -143,11 +156,78 @@ func exportPolicies(policies []string, c *api.Client) error {
 		}
 
 		_, err = f.WriteString(pContent)
-
 		if err != nil {
 			return fmt.Errorf("Could not write policy: %v, becouse: %v\n", p, err)
 		}
 	}
+	return nil
+}
+
+func installPolicies(policies []string, c *api.Client) error {
+
+	var reader io.Reader
+
+	for _, p := range policies {
+		path := "policies/" + p + ".hcl"
+		file, err := os.Open(path)
+		if err != nil {
+			return fmt.Errorf("Error opening policy file %s", err)
+		}
+		defer file.Close()
+		reader = file
+
+		var buf bytes.Buffer
+
+		if _, err := io.Copy(&buf, reader); err != nil {
+			return fmt.Errorf("Error reading policy!")
+		}
+
+		rules := buf.String()
+
+		name := strings.TrimSpace(strings.ToLower(p))
+
+		if err := c.Sys().PutPolicy(name, rules); err != nil {
+			return fmt.Errorf("Error uploading policy! %s", err)
+		}
+	}
+	return nil
+}
+
+func syncPolicies(c *api.Client) error {
+
+	vaultPolicies, err := getAllPolicies(c)
+
+	if err != nil {
+		return fmt.Errorf("Tried to read current policies, FAILED %s", err)
+	}
+
+	var localPolicies []string
+	var tempLocalPolicies []string
+	path := "policies/"
+	err = filepath.Walk(path, func(p string, info os.FileInfo, err error) error {
+		pP := strings.TrimSpace(strings.Trim(p, ".hcl"))
+		tempLocalPolicies = append(tempLocalPolicies, pP[9:])
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("Error could not retrieve file list: %s", err)
+	}
+
+	localPolicies = tempLocalPolicies[1:]
+	var notInstalled []string
+
+	for _, p := range localPolicies {
+		for _, vp := range vaultPolicies {
+			if p != vp {
+				notInstalled = append(notInstalled, p)
+			}
+		}
+	}
+	fmt.Println(notInstalled)
+	//if err := installPolicies(notInstalled, c); err != nil {
+	//	return fmt.Errorf("Could not install policies")
+	//}
+
 	return nil
 }
 
@@ -182,6 +262,10 @@ func addUser(c *api.Client, u User) error {
 	return nil
 }
 
+//func removeDuplicates(slice []interface{}) []interface{} {
+//
+//}
+
 func main() {
 	config := &api.Config{
 		Address: vaultAddr,
@@ -214,19 +298,35 @@ func main() {
 		fmt.Println(err)
 		return
 	}
-	err = uv.importVault(client)
-	if err != nil {
+	if err := uv.importVault(client); err != nil {
 		fmt.Println(err)
 		return
 	}
-	//	uA, err := uy.getUser("someother")
-	//	if err != nil {
-	//		fmt.Println(err)
+
+	//	if err := installPolicies(client); err != nil {
+	//
+	//	}
+	//	if err := syncPolicies(client); err != nil {
 	//		return
 	//	}
-	//	err = addUser(client, uA)
-	//	if err != nil {
-	//		fmt.Println(err)
-	//		return
-	//	}
+
+	for _, user := range uy.UserContainer {
+		userExist := uv.userExist(user)
+		if !userExist {
+			if err := addUser(client, user); err != nil {
+				fmt.Println(err)
+				return
+			}
+		}
+	}
+
+	for _, user := range uv.UserContainer {
+		userExist := uy.userExist(user)
+		if !userExist {
+			if err := deleteUser(client, user); err != nil {
+				fmt.Println(err)
+				return
+			}
+		}
+	}
 }
