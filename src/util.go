@@ -49,9 +49,7 @@ func getVaultPolicies(c *api.Client) (p []string, err error) {
 		return nil, fmt.Errorf("Could not get policies: %v", err)
 	}
 
-	for _, item := range pList {
-		policies = append(policies, item)
-	}
+	policies = append(policies, pList...)
 
 	return policies, err
 }
@@ -61,11 +59,12 @@ func exportVaultPolicies(policies []string, c *api.Client) error {
 	for _, p := range policies {
 		fName := "policies/" + p + ".hcl"
 		f, err := os.Create(fName)
-		defer f.Close()
 
 		if err != nil {
 			return fmt.Errorf("Could not write: %v, becouse: %v\n", fName, err)
 		}
+
+		defer f.Close()
 		pContent, err := c.Sys().GetPolicy(p)
 
 		if err != nil {
@@ -120,6 +119,16 @@ func syncVaultPolicies(c *api.Client, policyPath string, yamlVault *VaultContain
 			}
 		}
 	}
+
+	for _, policy := range vaultVault.PolicyContainer {
+		policyExist := yamlVault.policyExist(policy)
+		if !policyExist {
+			if err := deleteVaultPolicy(c, policy); err != nil {
+				return fmt.Errorf("Could not delete policy that should be delete: %s,\nBecouse: %s.", policy, err)
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -152,6 +161,13 @@ func deleteVaultUser(c *api.Client, u User) error {
 	_, err := cL.Delete(path)
 	if err != nil {
 		return fmt.Errorf("Could not delete user: %v\n", err)
+	}
+	return nil
+}
+
+func deleteVaultPolicy(c *api.Client, p string) error {
+	if err := c.Sys().DeletePolicy(p); err != nil {
+		return fmt.Errorf("Could not delete policy: %s,\nBecouse: %s", p, err)
 	}
 	return nil
 }

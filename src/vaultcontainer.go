@@ -60,9 +60,7 @@ func (vc *VaultContainer) getContainerUser(search string) (user User, err error)
 
 func (vc *VaultContainer) importYaml(yml []byte) error {
 
-	err := yaml.Unmarshal(yml, vc)
-
-	if err != nil {
+	if err := yaml.Unmarshal(yml, vc); err != nil {
 		return fmt.Errorf("Unmarshal error %v\n", err)
 	}
 
@@ -74,7 +72,7 @@ func (vc *VaultContainer) importLocalPolicies(policyPath string) error {
 	var localPolicies []string
 
 	err := filepath.Walk(policyPath, func(p string, info os.FileInfo, err error) error {
-		pP := filepath.Base(strings.TrimSpace(strings.Trim(p, ".hcl")))
+		pP := filepath.Base(strings.TrimSpace(strings.TrimSuffix(p, ".hcl")))
 		localPolicies = append(localPolicies, strings.ToLower(pP))
 		return nil
 	})
@@ -90,18 +88,20 @@ func (vc *VaultContainer) importLocalPolicies(policyPath string) error {
 
 // get []string of users and import one by one
 func (vc *VaultContainer) importVault(c *api.Client) error {
+
+	vaultPolicies, err := c.Sys().ListPolicies()
+	vc.PolicyContainer = removeRootPolicy(vaultPolicies)
+
+	if err != nil {
+		return fmt.Errorf("Could not get policies")
+	}
+
 	cL := c.Logical()
 
 	userList, err := listUsers(c, method)
 
 	if err != nil {
 		return fmt.Errorf("Could not get users becouse: %v\n", err)
-	}
-
-	//	vc.PolicyContainer, err = getAllPolicies(c)
-
-	if err != nil {
-		return fmt.Errorf("Could not retrieve all users %v\n", err)
 	}
 
 	for _, uName := range userList {
