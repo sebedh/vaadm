@@ -13,6 +13,7 @@ var (
 	method     = "userpass"
 	policyPath = "../policies/"
 	userYaml   = "../vault-access.yaml"
+	ssh_path   = "ssh/"
 )
 
 func main() {

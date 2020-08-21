@@ -5,11 +5,4 @@ users:
       - test-policy
   - name: somerandom
     policies:
-      - rumpa
-#
-#  - name: someother
-#    policies:
-#      - ssh-admin
-#
-#
-# if occurence
+      - merrandom
