@@ -1,0 +1,13 @@
+---
+sshroles:
+  - name: otp_key_role
+    key_type: otp
+    default_user: admjonash
+    cidr: 192.168.0.0/24
+  - name: other_key_role
+    key_type: otp
+    default_user: ubuntu
+    cidr: 10.0.0.0/24
+    allowed_users:
+      - ubuntu
+      - rhel
