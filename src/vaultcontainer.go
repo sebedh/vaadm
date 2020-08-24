@@ -12,7 +12,7 @@ import (
 
 type User struct {
 	Name     string   `yaml:"name"`
-	Policies []string `yaml:"policies"`
+	Policies []string `yaml:"token_policies"`
 }
 
 type VaultContainer struct {
@@ -87,44 +87,39 @@ func (vc *VaultContainer) importLocalPolicies(policyPath string) error {
 	return nil
 }
 
-// get []string of users and import one by one
 func (vc *VaultContainer) importVault() error {
-
-	vaultPolicies, err := vc.client.Sys().ListPolicies()
-	vc.PolicyContainer = removeRootPolicy(vaultPolicies)
-
-	if err != nil {
-		return fmt.Errorf("Could not get policies")
-	}
-
-	cL := vc.client.Logical()
+	c := vc.client.Logical()
 
 	path := "/auth/" + method + "/users"
 
-	userList, err := getList(cL, path)
+	users, err := getList(c, path)
 
 	if err != nil {
-		return fmt.Errorf("Could not get users becouse: %v\n", err)
+		return fmt.Errorf("Could not return list of users, method activated? %v\n", err)
 	}
 
-	for _, uName := range userList {
-		path := "/auth/" + method + "/users/" + uName
+	for _, uName := range users {
+		userPath := path + "/" + uName
 
-		vaultUser, err := cL.Read(path)
+		data, err := c.Read(userPath)
 
 		if err != nil {
-			return fmt.Errorf("Could not read user: %v\n ERROR: %v\n", uName, err)
+			return fmt.Errorf("Could not read user data: %v\n", err)
 		}
 
-		tempPolicies := vaultUser.Data["token_policies"].([]interface{})
-		policies := make([]string, len(tempPolicies))
-
-		for i, p := range tempPolicies {
-			policies[i] = fmt.Sprint(p)
+		content, err := yaml.Marshal(data.Data)
+		if err != nil {
+			return fmt.Errorf("Could not Marshal user data: %v\n", err)
 		}
 
-		user := User{Name: uName, Policies: policies}
+		user := User{Name: uName}
+		if err := yaml.Unmarshal(content, &user); err != nil {
+			return fmt.Errorf("Could not Unmarshal into map: %v\n", err)
+		}
+
 		vc.addContainerUser(user)
 	}
+
 	return nil
+
 }

@@ -84,27 +84,6 @@ func installPolicies(c *api.Client, policies []string, policyPath string) error 
 		if err := addVaultPolicy(c, policyPath, p); err != nil {
 			return fmt.Errorf("Could not install policy!")
 		}
-		//		path := "policies/" + p + ".hcl"
-		//		file, err := os.Open(path)
-		//		if err != nil {
-		//			return fmt.Errorf("Error opening policy file %s", err)
-		//		}
-		//		defer file.Close()
-		//		reader = file
-		//
-		//		var buf bytes.Buffer
-		//
-		//		if _, err := io.Copy(&buf, reader); err != nil {
-		//			return fmt.Errorf("Error reading policy!")
-		//		}
-		//
-		//		rules := buf.String()
-		//
-		//		name := strings.TrimSpace(strings.ToLower(p))
-		//
-		//		if err := c.Sys().PutPolicy(name, rules); err != nil {
-		//			return fmt.Errorf("Error uploading policy! %s", err)
-		//		}
 	}
 	return nil
 }
@@ -191,7 +170,6 @@ func deleteVaultPolicy(c *api.Client, p string) error {
 	return nil
 }
 
-//u.UserContainer = append(u.UserContainer[:i], u.UserContainer[i+1:]...)
 func addVaultUser(c *api.Client, u User) error {
 	cL := c.Logical()
 	path := "/auth/" + method + "/users/" + u.Name
