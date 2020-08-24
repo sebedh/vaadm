@@ -68,26 +68,6 @@ func (vc *VaultContainer) importYaml(yml []byte) error {
 	return nil
 }
 
-func (vc *VaultContainer) exportYaml(fName string) error {
-	f, err := os.Create(fName)
-
-	if err != nil {
-		return fmt.Errorf("Could not create file %s", err)
-	}
-
-	defer f.Close()
-
-	yamlContent, err := yaml.Marshal(vc)
-	if err != nil {
-		return fmt.Errorf("Could not marshal object %s", err)
-	}
-
-	if _, err := f.WriteString(string(yamlContent)); err != nil {
-		return fmt.Errorf("Could not write to file %s", err)
-	}
-	return nil
-}
-
 func (vc *VaultContainer) importLocalPolicies(policyPath string) error {
 
 	var localPolicies []string

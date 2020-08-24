@@ -7,13 +7,13 @@ import (
 )
 
 var (
-	vaultAddr  = "http://127.0.0.1:8200"
-	vaultToken = "s.Ej1WTWm7cd3F10vzaFaTWPDV"
-	method     = "userpass"
-	policyPath = "../policies/"
-	userYaml   = "../vault-access.yaml"
-	exportYaml = "../vault-export.yaml"
-	ssh_path   = "ssh/"
+	vaultAddr    = "http://127.0.0.1:8200"
+	vaultToken   = "s.Ej1WTWm7cd3F10vzaFaTWPDV"
+	method       = "userpass"
+	policyPath   = "../policies/"
+	userYaml     = "../vault-access.yaml"
+	exportedYaml = "../vault-export.yaml"
+	ssh_path     = "ssh/"
 )
 
 func main() {
@@ -60,10 +60,11 @@ func main() {
 		return
 	}
 
-	if err := uv.exportYaml(exportYaml); err != nil {
+	if err := exportYaml(&uv, exportedYaml); err != nil {
 		fmt.Println(err)
 		return
 	}
+
 	//
 	//	if err := syncVaultPolicies(client, policyPath, &uy, &uv); err != nil {
 	//		fmt.Println(err)

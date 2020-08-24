@@ -25,7 +25,3 @@ func (s *SshRole) importYaml(yml []byte) error {
 func (s *SshRole) importVault() error {
 	return nil
 }
-
-func (s *SshRole) exportYaml() error {
-	return nil
-}
