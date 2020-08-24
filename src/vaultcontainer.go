@@ -16,8 +16,9 @@ type User struct {
 }
 
 type VaultContainer struct {
-	UserContainer   []User   `yaml:"users"`
-	PolicyContainer []string `yaml:"policies"`
+	UserContainer   []User      `yaml:"users"`
+	PolicyContainer []string    `yaml:"policies"`
+	client          *api.Client `yaml:"-"`
 }
 
 func (vc *VaultContainer) userExist(findUser User) bool {
@@ -67,6 +68,26 @@ func (vc *VaultContainer) importYaml(yml []byte) error {
 	return nil
 }
 
+func (vc *VaultContainer) exportYaml(fName string) error {
+	f, err := os.Create(fName)
+
+	if err != nil {
+		return fmt.Errorf("Could not create file %s", err)
+	}
+
+	defer f.Close()
+
+	yamlContent, err := yaml.Marshal(vc)
+	if err != nil {
+		return fmt.Errorf("Could not marshal object %s", err)
+	}
+
+	if _, err := f.WriteString(string(yamlContent)); err != nil {
+		return fmt.Errorf("Could not write to file %s", err)
+	}
+	return nil
+}
+
 func (vc *VaultContainer) importLocalPolicies(policyPath string) error {
 
 	var localPolicies []string
@@ -87,18 +108,20 @@ func (vc *VaultContainer) importLocalPolicies(policyPath string) error {
 }
 
 // get []string of users and import one by one
-func (vc *VaultContainer) importVault(c *api.Client) error {
+func (vc *VaultContainer) importVault() error {
 
-	vaultPolicies, err := c.Sys().ListPolicies()
+	vaultPolicies, err := vc.client.Sys().ListPolicies()
 	vc.PolicyContainer = removeRootPolicy(vaultPolicies)
 
 	if err != nil {
 		return fmt.Errorf("Could not get policies")
 	}
 
-	cL := c.Logical()
+	cL := vc.client.Logical()
 
-	userList, err := listUsers(c, method)
+	path := "/auth/" + method + "/users"
+
+	userList, err := getList(cL, path)
 
 	if err != nil {
 		return fmt.Errorf("Could not get users becouse: %v\n", err)

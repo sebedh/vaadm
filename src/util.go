@@ -19,24 +19,22 @@ func removeRootPolicy(s []string) []string {
 	return s
 }
 
-func listUsers(c *api.Client, method string) (u []string, err error) {
-	cL := c.Logical()
+func getList(c *api.Logical, path string) (s []string, err error) {
+	r, err := c.List(path)
 
-	users, err := cL.List("/auth/" + method + "/users")
-
-	if err != nil || users == nil {
-		return u, fmt.Errorf("\nUser list is: %v.\nCould be due to missing Auth Method", err)
+	if err != nil || r == nil {
+		return nil, fmt.Errorf("Could not return list, wrong auth or no items at path: %v\n", err)
 	}
 
-	t := users.Data["keys"].([]interface{})
+	data := r.Data["keys"].([]interface{})
 
-	u = make([]string, len(t))
+	s = make([]string, len(data))
 
-	for i, v := range t {
-		u[i] = fmt.Sprint(v)
+	for i, v := range data {
+		s[i] = fmt.Sprint(v)
 	}
+	return s, nil
 
-	return u, nil
 }
 
 func getVaultPolicies(c *api.Client) (p []string, err error) {
@@ -54,7 +52,7 @@ func getVaultPolicies(c *api.Client) (p []string, err error) {
 	return policies, err
 }
 
-func exportVaultPolicies(policies []string, c *api.Client) error {
+func exportVaultPolicies(c *api.Client, policies []string) error {
 
 	for _, p := range policies {
 		fName := "policies/" + p + ".hcl"

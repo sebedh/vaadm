@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 
 	"github.com/hashicorp/vault/api"
 )
@@ -13,6 +12,7 @@ var (
 	method     = "userpass"
 	policyPath = "../policies/"
 	userYaml   = "../vault-access.yaml"
+	exportYaml = "../vault-export.yaml"
 	ssh_path   = "ssh/"
 )
 
@@ -33,35 +33,41 @@ func main() {
 		return
 	}
 
-	var uy VaultContainer
-	var uv VaultContainer
+	//var uy VaultContainer
+	//var uv VaultContainer
+	uv := VaultContainer{client: client}
 
-	f, err := ioutil.ReadFile(userYaml)
+	//f, err := ioutil.ReadFile(userYaml)
 
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	if err := uy.importLocalPolicies(policyPath); err != nil {
+	//if err := uy.importLocalPolicies(policyPath); err != nil {
+	//	fmt.Println(err)
+	//	return
+	//}
+
+	//	err = uy.importYaml(f)
+	//	if err != nil {
+	//		fmt.Println(err)
+	//		return
+	//	}
+	//
+	if err := uv.importVault(); err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	err = uy.importYaml(f)
-	if err != nil {
+	if err := uv.exportYaml(exportYaml); err != nil {
 		fmt.Println(err)
 		return
 	}
-
-	if err := uv.importVault(client); err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	if err := syncVaultPolicies(client, policyPath, &uy, &uv); err != nil {
-		fmt.Println(err)
-		return
-	}
+	//
+	//	if err := syncVaultPolicies(client, policyPath, &uy, &uv); err != nil {
+	//		fmt.Println(err)
+	//		return
+	//	}
 
 }
