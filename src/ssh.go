@@ -18,25 +18,25 @@ type SSHRole struct {
 	Excluded_cidr_list []string `yaml:"excluded_cidr_list"`
 }
 
-type RoleContainer struct {
+type SSHRoleContainer struct {
 	SSHRoleContainer []SSHRole   `yaml:"sshroles"`
-	client           *api.Client `yaml:"-"`
+	Client           *api.Client `yaml:"-"`
 }
 
-func (r *RoleContainer) Append(sshRole SSHRole) []SSHRole {
+func (r *SSHRoleContainer) Append(sshRole SSHRole) []SSHRole {
 	r.SSHRoleContainer = append(r.SSHRoleContainer, sshRole)
 	return r.SSHRoleContainer
 }
 
-func (r *RoleContainer) importYaml(yml []byte) error {
+func (r *SSHRoleContainer) importYaml(yml []byte) error {
 	if err := yaml.Unmarshal(yml, r); err != nil {
 		return fmt.Errorf("Could not parse SSH yml, %s", err)
 	}
 	return nil
 }
 
-func (r *RoleContainer) importVault() error {
-	c := r.client.Logical()
+func (r *SSHRoleContainer) importVault() error {
+	c := r.Client.Logical()
 
 	rolesPath := "/ssh/roles"
 
@@ -99,6 +99,35 @@ func (r *RoleContainer) importVault() error {
 
 		r.Append(role)
 
+	}
+
+	return nil
+}
+
+func (r *SSHRoleContainer) installSSHRoles() error {
+	for _, role := range r.SSHRoleContainer {
+		if err := r.addRoleToVault(role); err != nil {
+			return fmt.Errorf("Could not install role!: %v, %v", r, err)
+		}
+	}
+	return nil
+}
+
+func (r *SSHRoleContainer) addRoleToVault(role SSHRole) error {
+	c := r.Client.Logical()
+	path := "/ssh/roles/" + role.Name
+
+	data := make(map[string]interface{})
+
+	data["key_type"] = role.Key_type
+	data["default_user"] = role.Default_user
+	data["allowed_users"] = strings.Join(role.Allowed_users, ",")
+	data["cidr_list"] = strings.Join(role.Cidr_list, ",")
+	data["excluded_cidr_list"] = strings.Join(role.Excluded_cidr_list, ",")
+	data["port"] = role.Port
+
+	if _, err := c.Write(path, data); err != nil {
+		return fmt.Errorf("Could not write role")
 	}
 
 	return nil

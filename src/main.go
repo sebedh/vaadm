@@ -8,14 +8,15 @@ import (
 )
 
 var (
-	vaultAddr    = "http://127.0.0.1:8200"
-	vaultToken   = "s.Ymj4lZ9fALdDysnEKXv245sT"
-	method       = "userpass"
-	policyPath   = "../policies/"
-	userYaml     = "../vault-access.yaml"
-	rolesYaml    = "../ssh-roles.yaml"
-	exportedYaml = "../vault-export.yaml"
-	ssh_path     = "ssh/"
+	vaultAddr        = "http://127.0.0.1:8200"
+	vaultToken       = "s.Ymj4lZ9fALdDysnEKXv245sT"
+	method           = "userpass"
+	policyPath       = "../policies/"
+	userYaml         = "../vault-access.yaml"
+	rolesYaml        = "../ssh-roles.yaml"
+	exportedUserYaml = "../vault-access-export.yaml"
+	exportedRoleYaml = "../ssh-roles-export.yaml"
+	ssh_path         = "ssh/"
 )
 
 func main() {
@@ -36,7 +37,7 @@ func main() {
 	}
 
 	//var uy VaultContainer
-	uv := VaultContainer{client: client}
+	//uv := VaultContainer{client: client}
 
 	//f, err := ioutil.ReadFile(userYaml)
 
@@ -62,7 +63,7 @@ func main() {
 	//}
 	//fmt.Println("vault container:", uv)
 
-	sshcontainer := RoleContainer{client: client}
+	sshcontainer := SSHRoleContainer{Client: client}
 
 	f, err := ioutil.ReadFile(rolesYaml)
 	if err != nil {
@@ -75,11 +76,12 @@ func main() {
 		return
 	}
 
-	for _, role := range sshcontainer.SSHRoleContainer {
-		fmt.Println(role)
-	}
+	//	if err := exportYaml(&sshcontainer, exportedRoleYaml); err != nil {
+	//		fmt.Println(err)
+	//		return
+	//	}
 
-	if err := exportYaml(&uv, exportedYaml); err != nil {
+	if err := sshcontainer.installSSHRoles(); err != nil {
 		fmt.Println(err)
 		return
 	}
