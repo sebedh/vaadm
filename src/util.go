@@ -110,11 +110,11 @@ func syncVaultPolicies(c *api.Client, policyPath string, yamlVault *VaultContain
 	return nil
 }
 
-func syncVaultUsers(c *api.Client, yamlVault *VaultContainer, vaultVault *VaultContainer) error {
+func syncVaultUsers(yamlVault *VaultContainer, vaultVault *VaultContainer) error {
 	for _, user := range yamlVault.UserContainer {
 		userExist := vaultVault.userExist(user)
 		if !userExist {
-			if err := addVaultUser(c, user); err != nil {
+			if err := yamlVault.addUserToVault(user); err != nil {
 				return fmt.Errorf("Could not add user in sync process! %s", err)
 			}
 		}
@@ -123,7 +123,7 @@ func syncVaultUsers(c *api.Client, yamlVault *VaultContainer, vaultVault *VaultC
 	for _, user := range vaultVault.UserContainer {
 		userExist := yamlVault.userExist(user)
 		if !userExist {
-			if err := deleteVaultUser(c, user); err != nil {
+			if err := vaultVault.deleteUserFromVault(user); err != nil {
 				return fmt.Errorf("Could not remove user in sync process! %s", err)
 			}
 		}
@@ -151,38 +151,9 @@ func exportYaml(data interface{}, fName string) error {
 	return nil
 }
 
-//func exportVaultAccess(users []string, c *api.Client) {}
-
-func deleteVaultUser(c *api.Client, u User) error {
-	cL := c.Logical()
-	path := "/auth/" + method + "/users/" + u.Name
-	_, err := cL.Delete(path)
-	if err != nil {
-		return fmt.Errorf("Could not delete user: %v\n", err)
-	}
-	return nil
-}
-
 func deleteVaultPolicy(c *api.Client, p string) error {
 	if err := c.Sys().DeletePolicy(p); err != nil {
 		return fmt.Errorf("Could not delete policy: %s,\nBecouse: %s", p, err)
-	}
-	return nil
-}
-
-func addVaultUser(c *api.Client, u User) error {
-	cL := c.Logical()
-	path := "/auth/" + method + "/users/" + u.Name
-
-	data := make(map[string]interface{})
-	if method == "userpass" {
-		data["password"] = "temp0r!PassW0rd"
-	}
-	data["token_policies"] = u.Policies
-	// Write
-	_, err := cL.Write(path, data)
-	if err != nil {
-		return fmt.Errorf("Could not add becouse %v\n", err)
 	}
 	return nil
 }

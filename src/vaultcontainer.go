@@ -18,7 +18,7 @@ type User struct {
 type VaultContainer struct {
 	UserContainer   []User      `yaml:"users"`
 	PolicyContainer []string    `yaml:"policies"`
-	client          *api.Client `yaml:"-"`
+	Client          *api.Client `yaml:"-"`
 }
 
 func (vc *VaultContainer) userExist(findUser User) bool {
@@ -88,7 +88,7 @@ func (vc *VaultContainer) importLocalPolicies(policyPath string) error {
 }
 
 func (vc *VaultContainer) importVault() error {
-	c := vc.client.Logical()
+	c := vc.Client.Logical()
 
 	path := "/auth/" + method + "/users"
 
@@ -122,4 +122,36 @@ func (vc *VaultContainer) importVault() error {
 
 	return nil
 
+}
+
+func (vc *VaultContainer) installUsers() error {
+	for _, user := range vc.UserContainer {
+		if err := vc.addUserToVault(user); err != nil {
+			return fmt.Errorf("Could not install user %v\nERROR: %v", user.Name, err)
+		}
+	}
+	return nil
+}
+func (vc *VaultContainer) addUserToVault(user User) error {
+	c := vc.Client.Logical()
+	path := "/auth/" + method + "/users/" + user.Name
+
+	data := make(map[string]interface{})
+	if method == "userpass" {
+		data["password"] = "temp0rPassW0rd"
+	}
+	data["token_policies"] = user.Policies
+	if _, err := c.Write(path, data); err != nil {
+		return fmt.Errorf("Could not install user: %v\nERROR:%v", user.Name, err)
+	}
+	return nil
+}
+
+func (vc *VaultContainer) deleteUserFromVault(user User) error {
+	c := vc.Client.Logical()
+	path := "/auth/" + method + "/users/" + user.Name
+	if _, err := c.Delete(path); err != nil {
+		return fmt.Errorf("Could not delete user: %v\n", err)
+	}
+	return nil
 }

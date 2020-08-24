@@ -132,3 +132,14 @@ func (r *SSHRoleContainer) addRoleToVault(role SSHRole) error {
 
 	return nil
 }
+
+func (r *SSHRoleContainer) deleteRoleFromVault(role SSHRole) error {
+	c := r.Client.Logical()
+
+	path := "/ssh/roles/" + role.Name
+
+	if _, err := c.Delete(path); err != nil {
+		return fmt.Errorf("Could not delete SSH Role: %v\n%v", role.Name, err)
+	}
+	return nil
+}
