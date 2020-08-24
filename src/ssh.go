@@ -23,7 +23,7 @@ type SSHRoleContainer struct {
 	Client           *api.Client `yaml:"-"`
 }
 
-func (r *SSHRoleContainer) Append(sshRole SSHRole) []SSHRole {
+func (r *SSHRoleContainer) appendSSHRole(sshRole SSHRole) []SSHRole {
 	r.SSHRoleContainer = append(r.SSHRoleContainer, sshRole)
 	return r.SSHRoleContainer
 }
@@ -33,6 +33,15 @@ func (r *SSHRoleContainer) importYaml(yml []byte) error {
 		return fmt.Errorf("Could not parse SSH yml, %s", err)
 	}
 	return nil
+}
+
+func (r *SSHRoleContainer) policyExist(s string) bool {
+	for _, sshrole := range r.SSHRoleContainer {
+		if sshrole.Name == s {
+			return true
+		}
+	}
+	return false
 }
 
 func (r *SSHRoleContainer) importVault() error {
@@ -97,7 +106,7 @@ func (r *SSHRoleContainer) importVault() error {
 			Port:               port,
 		}
 
-		r.Append(role)
+		r.appendSSHRole(role)
 
 	}
 

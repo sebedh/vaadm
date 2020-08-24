@@ -1,24 +1,12 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
-	"io"
 	"os"
-	"strings"
 
 	"github.com/hashicorp/vault/api"
 	"gopkg.in/yaml.v2"
 )
-
-func removeRootPolicy(s []string) []string {
-	for i, p := range s {
-		if p == "root" {
-			return append(s[:i], s[i+1:]...)
-		}
-	}
-	return s
-}
 
 func getList(c *api.Logical, path string) (s []string, err error) {
 	r, err := c.List(path)
@@ -35,73 +23,22 @@ func getList(c *api.Logical, path string) (s []string, err error) {
 		s[i] = fmt.Sprint(v)
 	}
 	return s, nil
-
 }
 
-func getVaultPolicies(c *api.Client) (p []string, err error) {
-	var policies []string
-
-	pList, err := c.Sys().ListPolicies()
-	removeRootPolicy(pList)
-
-	if err != nil {
-		return nil, fmt.Errorf("Could not get policies: %v", err)
-	}
-
-	policies = append(policies, pList...)
-
-	return policies, err
-}
-
-func exportVaultPolicies(c *api.Client, policies []string) error {
-
-	for _, p := range policies {
-		fName := "policies/" + p + ".hcl"
-		f, err := os.Create(fName)
-
-		if err != nil {
-			return fmt.Errorf("Could not write: %v, becouse: %v\n", fName, err)
-		}
-
-		defer f.Close()
-		pContent, err := c.Sys().GetPolicy(p)
-
-		if err != nil {
-			return fmt.Errorf("Could not get policy: %v, becouse: %v\n", p, err)
-		}
-
-		_, err = f.WriteString(pContent)
-		if err != nil {
-			return fmt.Errorf("Could not write policy: %v, becouse: %v\n", p, err)
-		}
-	}
-	return nil
-}
-
-func installPolicies(c *api.Client, policies []string, policyPath string) error {
-
-	for _, p := range policies {
-		if err := addVaultPolicy(c, policyPath, p); err != nil {
-			return fmt.Errorf("Could not install policy!")
-		}
-	}
-	return nil
-}
-
-func syncVaultPolicies(c *api.Client, policyPath string, yamlVault *VaultContainer, vaultVault *VaultContainer) error {
-	for _, policy := range yamlVault.PolicyContainer {
-		policyExist := vaultVault.policyExist(policy)
+func syncVaultPolicies(policyPath string, filePolicies *PolicyContainer, vaultPolicies *PolicyContainer) error {
+	for _, policy := range filePolicies.Container {
+		policyExist := filePolicies.policyExist(policy.Name)
 		if !policyExist {
-			if err := addVaultPolicy(c, policyPath, policy); err != nil {
+			if err := filePolicies.addPolicyToVault(policy); err != nil {
 				return fmt.Errorf("Could not add policy in sync process! %s", err)
 			}
 		}
 	}
 
-	for _, policy := range vaultVault.PolicyContainer {
-		policyExist := yamlVault.policyExist(policy)
+	for _, policy := range vaultPolicies.Container {
+		policyExist := vaultPolicies.policyExist(policy.Name)
 		if !policyExist {
-			if err := deleteVaultPolicy(c, policy); err != nil {
+			if err := vaultPolicies.deletePolicyFromVault(policy); err != nil {
 				return fmt.Errorf("Could not delete policy that should be delete: %s,\nBecouse: %s.", policy, err)
 			}
 		}
@@ -147,41 +84,6 @@ func exportYaml(data interface{}, fName string) error {
 
 	if _, err := f.WriteString(string(yamlContent)); err != nil {
 		return fmt.Errorf("Could not write to file %s", err)
-	}
-	return nil
-}
-
-func deleteVaultPolicy(c *api.Client, p string) error {
-	if err := c.Sys().DeletePolicy(p); err != nil {
-		return fmt.Errorf("Could not delete policy: %s,\nBecouse: %s", p, err)
-	}
-	return nil
-}
-
-func addVaultPolicy(c *api.Client, policyPath string, policy string) error {
-
-	var reader io.Reader
-
-	path := policyPath + policy + ".hcl"
-	file, err := os.Open(path)
-	if err != nil {
-		return fmt.Errorf("Error opening policy file %s", err)
-	}
-	defer file.Close()
-	reader = file
-
-	var buf bytes.Buffer
-
-	if _, err := io.Copy(&buf, reader); err != nil {
-		return fmt.Errorf("Error reading policy!")
-	}
-
-	rules := buf.String()
-
-	name := strings.TrimSpace(strings.ToLower(policy))
-
-	if err := c.Sys().PutPolicy(name, rules); err != nil {
-		return fmt.Errorf("Error uploading policy! %s", err)
 	}
 	return nil
 }
