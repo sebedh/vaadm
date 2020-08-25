@@ -24,13 +24,13 @@ import (
 // exportCmd represents the export command
 var exportCmd = &cobra.Command{
 	Use:   "export",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
+	Short: "use to export policies, ssh roles, users",
+	Long: `You can use this to export the current state of your Vault installation.
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+For example:
+vaadm export policies (to export policies to policies/ folder.)
+vaadm export users (to export users to v-user-export.yaml)
+vaadm export sshroles (to export sshroles to v-sshroles.yaml)`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("export called")
 	},
