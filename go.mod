@@ -1,4 +1,4 @@
-module vault-admin
+module vaadm
 
 go 1.15
 
