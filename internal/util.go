@@ -27,18 +27,18 @@ func getList(c *api.Logical, path string) (s []string, err error) {
 
 func syncVaultPolicies(policyPath string, filePolicies *PolicyContainer, vaultPolicies *PolicyContainer) error {
 	for _, policy := range filePolicies.Container {
-		policyExist := filePolicies.policyExist(policy.Name)
+		policyExist := filePolicies.exists(policy.Name)
 		if !policyExist {
-			if err := filePolicies.addPolicyToVault(policy); err != nil {
+			if err := filePolicies.installToVault(policy); err != nil {
 				return fmt.Errorf("Could not add policy in sync process! %s", err)
 			}
 		}
 	}
 
 	for _, policy := range vaultPolicies.Container {
-		policyExist := vaultPolicies.policyExist(policy.Name)
+		policyExist := vaultPolicies.exists(policy.Name)
 		if !policyExist {
-			if err := vaultPolicies.deletePolicyFromVault(policy); err != nil {
+			if err := vaultPolicies.deleteFromVault(policy); err != nil {
 				return fmt.Errorf("Could not delete policy that should be delete: %s,\nBecouse: %s.", policy, err)
 			}
 		}
@@ -47,20 +47,20 @@ func syncVaultPolicies(policyPath string, filePolicies *PolicyContainer, vaultPo
 	return nil
 }
 
-func syncVaultUsers(yamlVault *VaultContainer, vaultVault *VaultContainer) error {
+func syncVaultUsers(yamlVault *UserContainer, vaultVault *UserContainer) error {
 	for _, user := range yamlVault.UserContainer {
-		userExist := vaultVault.userExist(user)
+		userExist := vaultVault.exist(user)
 		if !userExist {
-			if err := yamlVault.addUserToVault(user); err != nil {
+			if err := yamlVault.installToVault(user); err != nil {
 				return fmt.Errorf("Could not add user in sync process! %s", err)
 			}
 		}
 	}
 
 	for _, user := range vaultVault.UserContainer {
-		userExist := yamlVault.userExist(user)
+		userExist := yamlVault.exist(user)
 		if !userExist {
-			if err := vaultVault.deleteUserFromVault(user); err != nil {
+			if err := vaultVault.deleteFromVault(user); err != nil {
 				return fmt.Errorf("Could not remove user in sync process! %s", err)
 			}
 		}

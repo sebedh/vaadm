@@ -20,16 +20,16 @@ type PolicyContainer struct {
 	Client    *api.Client
 }
 
-func (pc *PolicyContainer) installPolicies(policies []Policy, policyPath string) error {
+func (pc *PolicyContainer) installAll(policies []Policy, policyPath string) error {
 	for _, p := range policies {
-		if err := pc.addPolicyToVault(p); err != nil {
+		if err := pc.installToVault(p); err != nil {
 			return fmt.Errorf("Could not install policy! %v", err)
 		}
 	}
 	return nil
 }
 
-func (pc *PolicyContainer) addPolicyToVault(policy Policy) error {
+func (pc *PolicyContainer) installToVault(policy Policy) error {
 
 	var reader io.Reader
 
@@ -68,19 +68,19 @@ func (pc *PolicyContainer) removeRootPolicy() []Policy {
 	return pc.Container
 }
 
-func (pc *PolicyContainer) deletePolicyFromVault(policy Policy) error {
+func (pc *PolicyContainer) deleteFromVault(policy Policy) error {
 	if err := pc.Client.Sys().DeletePolicy(policy.Name); err != nil {
 		return fmt.Errorf("Could not delete policy: %v\nERROR: %v", policy.Name, err)
 	}
 	return nil
 }
 
-func (pc *PolicyContainer) appendPolicy(policy Policy) []Policy {
+func (pc *PolicyContainer) add(policy Policy) []Policy {
 	pc.Container = append(pc.Container, policy)
 	return pc.Container
 }
 
-func (pc *PolicyContainer) policyExist(s string) bool {
+func (pc *PolicyContainer) exists(s string) bool {
 	for _, policy := range pc.Container {
 		if policy.Name == s {
 			return true
@@ -89,7 +89,7 @@ func (pc *PolicyContainer) policyExist(s string) bool {
 	return false
 }
 
-func (pc *PolicyContainer) exportPolicyFiles(path string) error {
+func (pc *PolicyContainer) exportToDisk(path string) error {
 	for _, p := range pc.Container {
 		fName := path + p.Name + ".hcl"
 		f, err := os.Create(fName)
@@ -112,7 +112,7 @@ func (pc *PolicyContainer) exportPolicyFiles(path string) error {
 	return nil
 }
 
-func (pc *PolicyContainer) importVaultPolicies() error {
+func (pc *PolicyContainer) importVault() error {
 
 	pList, err := pc.Client.Sys().ListPolicies()
 	if err != nil {
@@ -121,13 +121,13 @@ func (pc *PolicyContainer) importVaultPolicies() error {
 
 	for _, policy := range pList {
 		if policy != "root" {
-			pc.appendPolicy(Policy{Name: policy})
+			pc.add(Policy{Name: policy})
 		}
 	}
 	return nil
 }
 
-func (pc *PolicyContainer) importLocalPolicies(policyPath string) error {
+func (pc *PolicyContainer) importLocal(policyPath string) error {
 
 	var localPolicies []Policy
 

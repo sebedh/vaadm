@@ -23,7 +23,7 @@ type SSHRoleContainer struct {
 	Client           *api.Client `yaml:"-"`
 }
 
-func (r *SSHRoleContainer) appendSSHRole(sshRole SSHRole) []SSHRole {
+func (r *SSHRoleContainer) add(sshRole SSHRole) []SSHRole {
 	r.SSHRoleContainer = append(r.SSHRoleContainer, sshRole)
 	return r.SSHRoleContainer
 }
@@ -35,7 +35,7 @@ func (r *SSHRoleContainer) importYaml(yml []byte) error {
 	return nil
 }
 
-func (r *SSHRoleContainer) policyExist(s string) bool {
+func (r *SSHRoleContainer) exists(s string) bool {
 	for _, sshrole := range r.SSHRoleContainer {
 		if sshrole.Name == s {
 			return true
@@ -106,23 +106,23 @@ func (r *SSHRoleContainer) importVault() error {
 			Port:               port,
 		}
 
-		r.appendSSHRole(role)
+		r.add(role)
 
 	}
 
 	return nil
 }
 
-func (r *SSHRoleContainer) installSSHRoles() error {
+func (r *SSHRoleContainer) installAll() error {
 	for _, role := range r.SSHRoleContainer {
-		if err := r.addRoleToVault(role); err != nil {
+		if err := r.add(role); err != nil {
 			return fmt.Errorf("Could not install role!: %v, %v", r, err)
 		}
 	}
 	return nil
 }
 
-func (r *SSHRoleContainer) addRoleToVault(role SSHRole) error {
+func (r *SSHRoleContainer) installToVault(role SSHRole) error {
 	c := r.Client.Logical()
 	path := "/ssh/roles/" + role.Name
 
@@ -142,7 +142,7 @@ func (r *SSHRoleContainer) addRoleToVault(role SSHRole) error {
 	return nil
 }
 
-func (r *SSHRoleContainer) deleteRoleFromVault(role SSHRole) error {
+func (r *SSHRoleContainer) deleteFromVault(role SSHRole) error {
 	c := r.Client.Logical()
 
 	path := "/ssh/roles/" + role.Name
